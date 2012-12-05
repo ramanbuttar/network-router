@@ -47,7 +47,7 @@ struct sr_if* sr_get_interface(struct sr_instance* sr, const char* name)
 
     while(if_walker)
     {
-       if(!strncmp(if_walker->name,name,sr_IFACE_NAMELEN))
+       if(!strncmp(if_walker->name,name,SR_IFACE_NAMELEN))
         { return if_walker; }
         if_walker = if_walker->next;
     }
@@ -76,7 +76,7 @@ void sr_add_interface(struct sr_instance* sr, const char* name)
         sr->if_list = (struct sr_if*)malloc(sizeof(struct sr_if));
         assert(sr->if_list);
         sr->if_list->next = 0;
-        strncpy(sr->if_list->name,name,sr_IFACE_NAMELEN);
+        strncpy(sr->if_list->name,name,SR_IFACE_NAMELEN);
         return;
     }
 
@@ -88,7 +88,7 @@ void sr_add_interface(struct sr_instance* sr, const char* name)
     if_walker->next = (struct sr_if*)malloc(sizeof(struct sr_if));
     assert(if_walker->next);
     if_walker = if_walker->next;
-    strncpy(if_walker->name,name,sr_IFACE_NAMELEN);
+    strncpy(if_walker->name,name,SR_IFACE_NAMELEN);
     if_walker->next = 0;
 } /* -- sr_add_interface -- */ 
 
@@ -115,6 +115,31 @@ void sr_set_ether_addr(struct sr_instance* sr, const unsigned char* addr)
     memcpy(if_walker->addr,addr,6);
 
 } /* -- sr_set_ether_addr -- */
+
+/*--------------------------------------------------------------------- 
+ * Method: sr_set_ether_mask(..)
+ * Scope: Global
+ *
+ * set the IP address of the LAST interface in the interface list
+ *
+ *---------------------------------------------------------------------*/
+
+void sr_set_ether_mask(struct sr_instance* sr, uint32_t mask_nbo)
+{
+    struct sr_if* if_walker = 0;
+
+    /* -- REQUIRES -- */
+    assert(sr->if_list);
+    
+    if_walker = sr->if_list;
+    while(if_walker->next)
+    {if_walker = if_walker->next; }
+
+    /* -- copy address -- */
+    if_walker->mask = mask_nbo;
+
+} /* -- sr_set_ether_mask -- */
+
 
 /*--------------------------------------------------------------------- 
  * Method: sr_set_ether_ip(..)
@@ -180,15 +205,19 @@ void sr_print_if_list(struct sr_instance* sr)
 void sr_print_if(struct sr_if* iface)
 {
     struct in_addr ip_addr;
+    struct in_addr mask_addr;
 
     /* -- REQUIRES --*/
     assert(iface);
     assert(iface->name);
 
     ip_addr.s_addr = iface->ip;
+    mask_addr.s_addr = iface->mask;
 
-    Debug("%s\tHWaddr",iface->name);
+    Debug("Interface: %s\n",iface->name);
+    Debug("  hardware address ");
     DebugMAC(iface->addr);
     Debug("\n");
-    Debug("\tinet addr %s\n",inet_ntoa(ip_addr));
+    Debug("  mask %s\n",inet_ntoa(mask_addr));
+    Debug("  ip address %s\n",inet_ntoa(ip_addr));
 } /* -- sr_print_if -- */

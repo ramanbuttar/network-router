@@ -30,6 +30,8 @@
  *
  */
 
+#define ROUTER_DEBUG
+
 #ifndef SR_PROTOCOL_H
 #define SR_PROTOCOL_H
 
@@ -103,6 +105,9 @@ struct ip
     struct in_addr ip_src, ip_dst;	/* source and dest address */
   } __attribute__ ((packed)) ;
 
+
+#define ETHER_BROADCAST	{0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}
+#define ETHER_BZERO		{0x00,0x00,0x00,0x00,0x00,0x00}
 /* 
  *  Ethernet packet header prototype.  Too many O/S's define this differently.
  *  Easy enough to solve that and define it here.
@@ -121,9 +126,14 @@ struct sr_ethernet_hdr
 #define ARPHDR_ETHER    1
 #endif
 
+#ifndef IP_MAX_TTL
+#define IP_MAX_TTL		255
+#endif
+
+
 /* IP Protocol Types */
 #ifndef IPPROTO_TCP
-#define IPPROTO_TCP            	6  	/* TCP protocol */
+#define IPPROTO_TCP            	6  		/* TCP protocol */
 #endif
 
 #ifndef IPPROTO_UDP
@@ -132,6 +142,10 @@ struct sr_ethernet_hdr
 
 #ifndef IPPROTO_ICMP
 #define IPPROTO_ICMP            0x0001  /* ICMP protocol */
+#endif
+
+#ifndef IPPROTO_PWOSPF
+#define IPPROTO_PWOSPF			89		/* ICMP protocol */
 #endif
 
 /* Ethernet Types */

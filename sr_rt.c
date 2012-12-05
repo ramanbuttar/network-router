@@ -51,6 +51,12 @@ int sr_load_rt(struct sr_instance* sr,const char* filename)
 
     while( fgets(line,BUFSIZ,fp) != 0)
     {
+		/* if empty table don't load it */
+		if( strcmp(line,"\n") == 0 )
+		{
+			return 0;
+		}
+
         sscanf(line,"%s %s %s %s",dest,gw,mask,iface);
         if(inet_aton(dest,&dest_addr) == 0)
         { 
@@ -102,7 +108,7 @@ void sr_add_rt_entry(struct sr_instance* sr, struct in_addr dest,
         sr->routing_table->dest = dest;
         sr->routing_table->gw   = gw;
         sr->routing_table->mask = mask;
-        strncpy(sr->routing_table->interface,if_name,sr_IFACE_NAMELEN);
+        strncpy(sr->routing_table->interface,if_name,SR_IFACE_NAMELEN);
 
         return;
     }
@@ -120,9 +126,112 @@ void sr_add_rt_entry(struct sr_instance* sr, struct in_addr dest,
     rt_walker->dest = dest;
     rt_walker->gw   = gw;
     rt_walker->mask = mask;
-    strncpy(rt_walker->interface,if_name,sr_IFACE_NAMELEN);
+    strncpy(rt_walker->interface,if_name,SR_IFACE_NAMELEN);
 
 } /* -- sr_add_entry -- */
+
+
+void sr_add_pwospf_rt_entry(struct sr_instance* sr, uint32_t dest, uint32_t gw, uint32_t mask, char* if_name)
+{
+	 struct sr_rt* rt_walker = 0;
+	 struct sr_rt* pp = 0;
+
+    /* -- REQUIRES -- */
+    assert(if_name);
+    assert(sr);
+
+    /* -- empty list special case -- */
+    if(sr->pwospf_table == 0)
+    {
+        sr->pwospf_table = (struct sr_rt*)malloc(sizeof(struct sr_rt));
+        assert(sr->pwospf_table);
+        sr->pwospf_table->next = 0;
+        sr->pwospf_table->dest.s_addr = dest;
+        sr->pwospf_table->gw.s_addr   = gw;
+        sr->pwospf_table->mask.s_addr = mask;
+        strncpy(sr->pwospf_table->interface,if_name,SR_IFACE_NAMELEN);
+
+        return;
+    }
+
+    /* -- find the end of the list -- */
+    rt_walker = sr->pwospf_table;
+	pp = sr->pwospf_table;
+
+    while(rt_walker != NULL)
+    {
+		/* If subnet/mask combo exists, most optimal path already present in pwospf table */
+		if (rt_walker->dest.s_addr == dest && rt_walker->mask.s_addr == mask) {
+			return;
+		}
+
+		pp = rt_walker;
+		rt_walker = rt_walker->next;
+	}
+	
+	/* subnet/mask not found in table so add it to the end */
+    pp->next = (struct sr_rt*)malloc(sizeof(struct sr_rt));
+    assert(pp->next);
+
+	/* assign values to new entry */
+    pp = pp->next;
+
+    pp->dest.s_addr = dest;
+    pp->gw.s_addr   = gw;
+    pp->mask.s_addr = mask;
+    strncpy(pp->interface,if_name,SR_IFACE_NAMELEN);
+
+    pp->next = NULL;
+
+} /* -- sr_add_entry -- */
+
+void sr_clear_pwospf_rt(struct sr_instance* sr)
+{
+	struct sr_rt* pp = sr->pwospf_table;	
+	struct sr_rt* cp = sr->pwospf_table;
+
+	while( cp != NULL ) {
+		if( cp == sr->pwospf_table )
+		{
+	        /* if first element */
+	        sr->pwospf_table = cp->next;
+	        pp = sr->pwospf_table;
+	        free(cp);
+	        cp = sr->pwospf_table;
+		}
+		else
+        {
+        	/* not first element */
+            pp->next = cp->next;
+            free(cp);
+            cp = pp->next;
+		}
+	}
+}
+
+void sr_print_pwospf_table(struct sr_instance* sr)
+{
+    struct sr_rt* rt_walker = 0;
+
+    if(sr->pwospf_table == 0)
+    {
+        printf(" *warning* Routing table empty \n");
+        return;
+    }
+
+    printf("Destination\tGateway\t\tMask\tIface\n");
+
+    rt_walker = sr->pwospf_table;
+    
+    sr_print_routing_entry(rt_walker);
+    while(rt_walker->next)
+    {
+        rt_walker = rt_walker->next; 
+        sr_print_routing_entry(rt_walker);
+    }
+}
+
+
 
 /*--------------------------------------------------------------------- 
  * Method:

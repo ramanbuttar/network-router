@@ -131,6 +131,8 @@ int sr_connect_to_server(struct sr_instance* sr,unsigned short port,
     strncpy( command.mVirtualHostID, sr->host,  IDSIZE);
     strncpy( command.mUID, sr->user, IDSIZE);
 
+    printf("Sending c_open (type=%d len=%d)\n", htonl(command.mType), htonl(command.mLen) );
+
     if (send(sr->sockfd, (void *)&command, sizeof(c_open), 0) != sizeof(c_open))
     {
         perror("send(..):sr_client.c::sr_connect_to_server()");
@@ -204,6 +206,9 @@ int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
 
     printf("Router interfaces:\n");
     sr_print_if_list(sr);
+
+    /* flag that hardware has been initialized */
+    sr->hw_init = 1;
 
     return num_entries;
 } /* -- sr_handle_hwinfo -- */
@@ -315,7 +320,8 @@ int sr_read_from_server(struct sr_instance* sr /* borrowed */)
                     ntohl(sr_pkt->mLen) - sizeof(c_packet_header));
 
             /* -- pass to router, student's code should take over here -- */
-            sr_handlepacket(sr,
+		
+		    sr_handlepacket(sr,
                     (buf+sizeof(c_packet_header)),
                     len - sizeof(c_packet_ethernet_header) +
                     sizeof(struct sr_ethernet_hdr),
@@ -419,6 +425,13 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
                          unsigned int len, 
                          const char* iface /* borrowed */)
 {
+
+	#ifdef ROUTER_DEBUG
+		if (strcmp(sr->debug_iface, iface) == 0) {
+			printf("%s interface dropped. Packet not sent.\n", iface);
+			return 0;
+		}
+	#endif
     c_packet_header *sr_pkt;
     unsigned int total_len =  len + (sizeof(c_packet_header));
 

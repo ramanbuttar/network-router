@@ -24,7 +24,7 @@
 #include <inttypes.h>
 #endif
 
-#define sr_IFACE_NAMELEN 32
+#define SR_IFACE_NAMELEN 32
 
 struct sr_instance;
 
@@ -37,10 +37,17 @@ struct sr_instance;
 
 struct sr_if
 {
-    char name[sr_IFACE_NAMELEN];
-    unsigned char addr[6];
-    uint32_t ip;
-    uint32_t speed;
+    char 			name[SR_IFACE_NAMELEN];
+    unsigned char 	addr[6];
+    uint32_t 		ip;
+    uint32_t 		speed;
+    volatile uint32_t mask;
+	uint8_t			helloint;		/* PWOSPF Hello Broadcast Interval */
+	uint32_t 		n_id;			/* PWSOPF Router ID of neighbour */
+	uint32_t 		n_ip;			/* PWSOPF Router IP of neighbour */
+	uint32_t 		n_mask;			/* PWSOPF Router Mask of neighbour */
+	time_t 			time;			/* PWOSPF Router neighbour TTL */
+	uint16_t 		seq;			/* PWOSPF Sequence number for sending LSUs */
     struct sr_if* next;
 };
 
@@ -48,6 +55,7 @@ struct sr_if* sr_get_interface(struct sr_instance* sr, const char* name);
 void sr_add_interface(struct sr_instance*, const char*);
 void sr_set_ether_addr(struct sr_instance*, const unsigned char*);
 void sr_set_ether_ip(struct sr_instance*, uint32_t ip_nbo);
+void sr_set_ether_mask(struct sr_instance*, uint32_t ip_nbo);
 void sr_print_if_list(struct sr_instance*);
 void sr_print_if(struct sr_if*);
 

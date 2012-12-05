@@ -107,11 +107,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-
-    printf("Loading routing table\n");
-    printf("---------------------------------------------\n");
     sr_print_routing_table(&sr);
-    printf("---------------------------------------------\n");
 
     sr.topo_id = topo;
     strncpy(sr.host,host,32);
@@ -133,21 +129,32 @@ int main(int argc, char **argv)
         }
     }
 
-    Debug("Client %s connecting to Server %s:%d\n", sr.user, server, port);
+    Debug("Client %s connecting to Server %s:%d\n",
+            sr.user, server, port);
     Debug("Requesting topology %d\n", topo);
 
     /* connect to server and negotiate session */
-    if(sr_connect_to_server(&sr,port,server) == -1)
-    {
+    if(sr_connect_to_server(&sr,port,server) == -1) {
         return 1;
     }
 
+    /* read from server until the hardware is setup */
+    while (! sr.hw_init )
+    {
+        if(sr_read_from_server(&sr) == -1 )
+        {
+            fprintf(stderr, "Error: could not get hardware information ");
+            fprintf(stderr, "from the server");
+            return -1;
+        }
+    }
+
     /* call router init (for arp subsystem etc.) */
-    sr_init(&sr);
+    sr_init(&sr); 
     
     /* -- whizbang main loop ;-) */
     while( sr_read_from_server(&sr) == 1);
-   
+
     sr_destroy_instance(&sr);
 
     return 0;
@@ -210,9 +217,7 @@ static void sr_destroy_instance(struct sr_instance* sr)
         sr_dump_close(sr->logfile);
     }
 
-    /*
     fprintf(stderr,"sr_destroy_instance leaking memory\n");
-    */
 } /* -- sr_destroy_instance -- */
 
 /*-----------------------------------------------------------------------------
@@ -234,6 +239,7 @@ static void sr_init_instance(struct sr_instance* sr)
     sr->if_list = 0;
     sr->routing_table = 0;
     sr->logfile = 0;
+    sr->hw_init = 0;
 } /* -- sr_init_instance -- */
 
 /*-----------------------------------------------------------------------------
@@ -262,7 +268,7 @@ int sr_verify_routing_table(struct sr_instance* sr)
 
     if( (sr->if_list == 0) || (sr->routing_table == 0))
     {
-        return 999; /* doh! */
+        return 0; /* assume empty */
     }
 
     rt_walker = sr->routing_table;
@@ -273,7 +279,7 @@ int sr_verify_routing_table(struct sr_instance* sr)
         if_walker = sr->if_list;
         while(if_walker)
         {
-            if( strncmp(if_walker->name,rt_walker->interface,sr_IFACE_NAMELEN)
+            if( strncmp(if_walker->name,rt_walker->interface,SR_IFACE_NAMELEN)
                     == 0)
             { break; }
             if_walker = if_walker->next;
